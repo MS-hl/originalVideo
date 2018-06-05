@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>五分钟内的视频播放</title>
+    <style>
+        .mainBox{
+            border:1px solid cornflowerblue;
+            width:720px;
+            margin:0 auto;
+            padding: 0 20px;
+        }
+        .video{
+            width:100%;
+            height:500px;
+        }
+        .progressBar{
+            width:100%;
+            height:25px;
+            background-color: #f5c9ff;
+            margin-bottom: 10px;
+            position:relative;
+        }
+        .playProgressBar{
+            width:0px;
+            height:100%;
+            background-color: #2df5ff;
+            position:absolute;
+            top:0px;
+            left:0px;
+            z-index: 90;
+        }
+        .barContent{
+            height:100%;
+            line-height:25px;
+        }
+
+    </style>
+
+</head>
+<body>
+    <h3 style="text-align:center">五分钟的视频播放</h3>
+    <div id="mainBox" class="mainBox">
+        <div id="videoContainer" class="videoContainer">
+            <video id="video" class="video" src=""></video>
+        </div>
+        <div id="controls" class="controls">
+            <div id="progressBar" class="progressBar">
+                <div id="playProgressBar" class="playProgressBar">
+                    <span id="barContent" class="barContent">0%</span>
+                </div>
+            </div>
+            <div >
+                <button id="playBtn" class="playBtn">播放</button>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        var videoContainer = document.getElementById('videoContainer')
+        var video = document.getElementById('video')
+        var progressBar = document.getElementById('progressBar')
+        var playProgressBar = document.getElementById('playProgressBar')
+        var barContent = document.getElementById('barContent')
+        var playBtn = document.getElementById('playBtn')
+
+        var srcList=[
+            'http://live76.qqy189.com:18181/18000000010000005701/20180515/1700.mp4',
+            'http://live76.qqy189.com:18181/18000000010000005701/20180515/1701.mp4',
+            // 'http://live76.qqy189.com:18181/18000000010000005701/20180515/1702.mp4',
+            'http://live76.qqy189.com:18181/18000000010000005701/20180515/1703.mp4',
+            'http://live76.qqy189.com:18181/18000000010000005701/20180515/1704.mp4'
+        ]
+        var baseUrl = 'http://live76.qqy189.com:18181/18000000010000005701/20180515/'
+        var currTime =0
+        var currUrl = baseUrl + '170' + currTime + '.mp4' //初始地址为第1分钟
+
+        var eachVideoTimeLen=[]
+        var len = progressBar.offsetWidth / 5   //控制条上每分钟的长度
+        var noSrc = []//没有video url的分钟
+
+
+        getVideoTimeLen()
+
+        function getVideoTimeLen(){
+            for(var i=0;i<5;i++){
+                eachVideoTimeLen[eachVideoTimeLen.length] = (i+1)*len
+            }
+            initProgressBar()
+        }
+        function initProgressBar(){ //控制条初始化
+            for(var i=0;i<eachVideoTimeLen.length;i++){//在控制条上创建每个视频时间端的编辑
+                var oSpan = document.createElement('span')
+                oSpan.style.position = 'absolute'
+                oSpan.style.width = '1px'
+                oSpan.style.height = '25px'
+                oSpan.style.backgroundColor = '#fff'
+                oSpan.style.zIndex = '100'
+                oSpan.style.left = eachVideoTimeLen[i] + 'px'
+                progressBar.appendChild(oSpan)
+            }
+
+            for(var i=0;i<eachVideoTimeLen.length;i++){//设置没有没有url时间段的控制条显示情况
+               var url= baseUrl + '170' + i +'.mp4'
+                var flag = 'false'
+                for(var j=0;j<srcList.length;j++){
+                    if(url == srcList[j]){
+                        flag = 'true'
+                        break
+                    }
+                    flag = 'false'
+                }
+                if(flag === 'false'){
+                    noSrc.push(i)
+                    var noneSrc = document.createElement('span')
+                    noneSrc.style.width = len + 'px'
+                    noneSrc.style.height = '25px'
+                    noneSrc.style.position = 'absolute'
+                    noneSrc.style.backgroundColor = '#ffff61'
+                    noneSrc.style.left =i*len + 'px'
+                    noneSrc.style.top = '0px'
+                    noneSrc.style.zIndex = '10'
+                    progressBar.appendChild(noneSrc)
+                }
+            }
+        }
+
+
+        var videoPlayer = {
+            init:function(){
+                video.src = currUrl
+                video.removeAttribute('controls')
+                videoPlayer.operateControls()
+            },
+            operateControls:function(){
+                bindEvent(playBtn,'click',play)
+                bindEvent(video,'ended',nextMinite)
+                bindEvent(progressBar,'mousedown',videoSeek)//点击此处开始播放视频
+
+            }
+        }
+        videoPlayer.init()
+
+
+        function bindEvent(ele,eventName,func){
+            if(window.addEventListener){
+                ele.addEventListener(eventName,func)
+            }else{
+                ele.attachEvent("on"+eventName,func)
+            }
+        }
+        function nextMinite(){
+            currTime++
+            if(currTime >= 5){
+                currTime = 0
+            }
+            currUrl = baseUrl + '170' + currTime + '.mp4'
+            video.src = currUrl
+            play()
+        }
+
+
+        var timer
+        function play(){
+            clearInterval(timer)
+            if( video.ended || video.paused){
+                video.play()
+                playBtn.innerText = '暂停'
+                timer = setInterval(getPlayLength,60)
+            }else{
+                video.pause()
+                playBtn.innerText = '播放'
+            }
+        }
+        function getPlayLength(){
+            var percent =  (60*currTime+video.currentTime)/ 60
+            playProgressBar.style.width = percent * len  + 'px'
+            barContent.innerText = (percent / 5 *100).toFixed(1) +'%'
+        }
+
+        function videoSeek(e){
+
+            if(video.ended || video.paused){
+                play()
+                enhanceVideoSeek(e)
+            }else{
+                enhanceVideoSeek(e)
+            }
+        }
+        function enhanceVideoSeek(e){
+            clearInterval(timer)
+            var currPos = e.pageX - progressBar.offsetLeft
+            for(var i=0;i<5;i++){
+                if(currPos < (i+1)*len){
+                    currTime = i-1
+                    break
+                }
+            }
+            nextMinite()//跳转当前的url地址
+
+            //设置video的currentTime
+            if(currTime == 0){//第一秒
+                video.currentTime = (currPos*5*60)/progressBar.offsetWidth
+            }else{
+                video.currentTime = ((currPos-i*len)*5*60)/progressBar.offsetWidth
+            }
+
+            timer = setInterval(getPlayLength,60)
+
+
+
+        }
+
+
+
+
+
+
+
+
+
+    </script>
+
+</body>
+</html>

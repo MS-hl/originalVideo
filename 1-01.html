@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>根据url地址进行播放</title>
+    <style>
+        .videoContainer{
+            width:500px;
+        }
+        .controller{
+            width:100%;
+        }
+        #allLength{
+            background-color:black;
+            height:20px;
+            width:100%;
+            position: relative;
+        }
+        #playLength{
+            width:0px;
+            height:20px;
+            background-color:red;
+            position: absolute;
+        }
+        .showVideoTime{
+            height:20px;
+            width:100%;
+            position: relative;
+        }
+
+    </style>
+</head>
+<body>
+    <div>
+        <div id="videoContainer" class="videoContainer">
+            <h3>video进度条设置</h3>
+            <video id="video" style="width:500px;height:300px;" src='' onloadeddata = "getAllTime()">
+                <!--<source src='http://live76.qqy189.com:18181/18000000010000005701/20180515/1700.mp4' type="video/mp4"/>-->
+            </video>
+            <div id="controller" class="controller">
+                <div id="allLength">
+                    <div id="playLength">
+                        <span id="percentContent">0</span>
+                    </div>
+                </div>
+                <div id="showVideoTime" class="showVideoTime">
+                </div>
+                <div>
+                    <button id="playBtn" title="Play"> 播放 </button>
+                    <!--<button id="fullScreenBtn" title="FullScreen Toggle">  全屏 </button>-->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        var video = document.getElementById("video");
+        var video1 = document.getElementById("video1");
+        var videoControls = document.getElementById("videoControls");
+        var videoContainer = document.getElementById("videoContainer");
+        var playBtn = document.getElementById("playBtn");
+        var allLength = document.getElementById("allLength");
+        var playLength = document.getElementById("playLength");
+        var percentContent = document.getElementById("percentContent");
+        var showVideoTime = document.getElementById("showVideoTime");
+        var timer
+        var curr = 0
+
+
+        var srcList = [
+            'http://live76.qqy189.com:18181/18000000010000005701/20180515/1700.mp4',
+            'http://live76.qqy189.com:18181/18000000010000005701/20180515/1701.mp4',
+            'http://live76.qqy189.com:18181/18000000010000005701/20180515/1702.mp4',
+            'http://live76.qqy189.com:18181/18000000010000005701/20180515/1703.mp4',
+            'http://live76.qqy189.com:18181/18000000010000005701/20180515/1704.mp4',
+            'http://live76.qqy189.com:18181/18000000010000005701/20180515/1705.mp4'
+        ]
+        var timeList = []
+        var lenList =[]
+        var allSrcTime = 0
+        var len = 0
+        var flag = 'true' //标记总时间只需要计算一次
+
+        function getAllTime(){
+            if(flag === 'true'){
+                timeList[timeList.length] = video.duration
+                len++
+                if(len < srcList.length){
+                    video.src = srcList [len]
+                }else{
+                    for(var i=0;i<timeList.length;i++){
+                        allSrcTime += timeList[i]//计算时间总长
+                    }
+                    showEachVideoBar()
+                    flag = false
+                }
+            }
+
+
+        }
+        var tagLen = 0
+        function showEachVideoBar(){
+            video.src = srcList[0]
+            for(var i=0;i<timeList.length;i++){
+                tagLen += (timeList[i] / allSrcTime) *(allLength.offsetWidth)
+                var oSpan = document.createElement('span')
+                oSpan.style.border='0.5px solid #fff'
+                oSpan.style.height = allLength.offsetHeight + 'px'
+                oSpan.style.marginLeft = tagLen + 'px'
+                oSpan.style.position = 'absolute'
+                lenList[lenList.length] = tagLen
+                allLength.appendChild(oSpan)
+            }
+
+        }
+
+
+
+        var videoPlayer = {
+            init:function(){
+                video.src=srcList[curr]
+                video.removeAttribute('controls')
+                videoPlayer.operateControls()
+            },
+            operateControls:function(){
+                bindEvent(playBtn,'click',play)
+                bindEvent(video,'click',play)
+                bindEvent(video,'ended',nextUrl)
+                bindEvent(allLength, "mousedown", videoSeek);//点击进度条，视频播放该时间的视频
+            }
+        }
+        videoPlayer.init()
+
+        function nextUrl(){
+            curr++;
+            if(curr>=srcList.length){
+                curr=0;//播放完后，重新播放
+            }
+            video.src=srcList[curr];
+            play()
+
+        }
+
+        function play(){
+            clearInterval(timer)
+            // playLength.style.width = "0px"
+            if( video.paused){
+                video.play()
+                playBtn.innerHTML = "暂停";
+                timer = setInterval(getPlayLength,100)
+            }
+            else{
+                video.pause();
+                playBtn.innerHTML = "播放";
+            }
+        }
+
+
+        function getPlayLength(){
+            var oldTime = 0//播放器已经播放过的事件
+            for(var i=0;i<curr;i++){
+                oldTime += timeList[curr]
+            }
+            var percent =  (oldTime + video.currentTime)/ allSrcTime
+            playLength.style.width = percent * (allLength.offsetWidth)  + 'px'
+            percentContent.innerText = (percent *100).toFixed(1) +'%'
+        }
+
+
+
+        //绑定事件
+        function bindEvent(ele,eventName,func){
+            if(window.addEventListener){
+                ele.addEventListener(eventName,func)
+            }else{
+                ele.attachEvent("on"+eventName,func)
+            }
+        }
+
+
+        function videoSeek(e){
+            if(video.ended || video.paused){
+                play()
+                enhanceVideoSeek(e)
+            }else{
+                enhanceVideoSeek(e)
+            }
+        }
+        function enhanceVideoSeek(e){
+
+            clearInterval(timer)
+            var length = e.pageX - allLength.offsetLeft;
+            for(var i=0;i<lenList.length;i++){
+                if(length < lenList[i]){
+                    if(i !=curr){
+                        curr = i-1 //本来应该设置curr=i,因为nextUrl（）方法中会把当前的curr++,所以curr=i-1
+                        nextUrl()
+                    }
+                    break
+                }
+            }
+
+            var percent
+            if(curr === 0){
+                percent = length / allLength.offsetWidth;
+            }else{
+                percent = (length-lenList[curr-1])/allLength.offsetWidth
+            }
+            playLength.style.width = length + 'px';
+            video.currentTime = percent *allSrcTime ;
+            percentContent.innerText = (percent *100).toFixed(1) +'%'
+            timer = setInterval(getPlayLength,100)
+        }
+
+
+
+
+
+        // function play(){
+        //     clearInterval(timer)
+        //     if(video.ended || video.paused){
+        //         video.play()
+        //         playBtn.innerHTML = "暂停";
+        //         timer = setInterval(getPlayLength,100)
+        //     }else{
+        //         video.pause();
+        //         playBtn.innerHTML = "播放";
+        //     }
+        // }
+        //
+        // function videoSeek(e){
+        //     if(video.ended || video.paused){
+        //         play()
+        //         enhanceVideoSeek(e)
+        //     }else{
+        //         enhanceVideoSeek(e)
+        //     }
+        // }
+        // function enhanceVideoSeek(e){
+        //     clearInterval(timer)
+        //     var length = e.pageX - allLength.offsetLeft;
+        //     var percent = length / allLength.offsetWidth;
+        //     playLength.style.width = length + 'px';
+        //     video.currentTime = percent * video.duration;
+        //     percentContent.innerText = (percent *100).toFixed(1) +'%'
+        //     timer = setInterval(getPlayLength,100)
+        // }
+
+        //设置播放条样式
+        // function getPlayLength(){
+        //     var percent = video.currentTime / video.duration
+        //     playLength.style.width = percent * (allLength.offsetWidth) + 'px'
+        //     percentContent.innerText = (percent *100).toFixed(1) +'%'
+        // }
+
+
+
+
+
+    </script>
+
+</body>
+</html>
