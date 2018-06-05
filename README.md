@@ -1,0 +1,2 @@
+# originalVideo
+使用原生js进行video的控制条设置，多个url视频连续播放，根绝url或者时间进行播放
